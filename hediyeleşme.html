@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Çekiliş ve Dua Kardeşliği Platformu</title>
+    <link href="styles/hediye.css" rel="stylesheet">
+
+</head>
+<body>
+
+<div class="container">
+    
+    <!-- ================= ANA EKRAN (LOBİ) ================= -->
+    <div id="lobby-view">
+        <h2>✨ Çekiliş Merkezine Hoş Geldiniz</h2>
+        <p style="text-align: center; color: #64748b;">Lütfen giriş yapmak istediğiniz odayı seçin:</p>
+        <div class="lobby-buttons">
+            <button class="lobby-btn btn-hediye" onclick="odaAc('hediyelesme')">🎁 Hediye Çekilişi Odası</button>
+            <button class="lobby-btn btn-dua" onclick="odaAc('duakardesligi')">🤲 Dua Kardeşliği Odası</button>
+        </div>
+    </div>
+
+    <!-- ================= GİRİŞ VE SEÇİM EKRANI (ODALAR İÇİN ORTAK) ================= -->
+    <div id="room-view" style="display: none;">
+        <button class="back-btn" onclick="anaEkranaDon()">⬅ Ana Menüye Dön</button>
+        <h3 id="room-title">Oda Başlığı</h3>
+        <p id="room-desc" style="text-align: center; color: #64748b; font-size: 14px; margin-bottom: 20px;"></p>
+
+        <!-- Adım 1: Kurulum -->
+        <div id="setup-section">
+            <div class="setup-controls">
+                <label for="user-count" style="font-weight: 500;">Katılımcı Sayısı:</label>
+                <input type="number" id="user-count" min="3" max="50" value="4" onchange="inputlariOlustur()" oninput="inputlariOlustur()">
+            </div>
+
+            <div id="inputs-container">
+                <!-- Dinamik inputlar buraya gelecek -->
+            </div>
+            
+            <button id="submit-btn" class="action-btn" onclick="cekilisYap()">Kura Çek ve Kilitle</button>
+        </div>
+
+        <!-- Adım 2: Sonuç Gösterme -->
+        <div id="reveal-section" style="display: none;">
+            <p style="text-align: center; color: #475569;">Kura tamamlandı! Sırayla herkes kendi ismini seçip gizlice sonucuna baksın.</p>
+            
+            <div class="reveal-box">
+                <label for="user-select" style="display:block; margin-bottom:8px; font-weight:500;">Kimsin?</label>
+                <select id="user-select" onchange="ekraniTemizle()">
+                    <option value="">-- İsmini Seç --</option>
+                </select>
+                
+                <button class="action-btn" style="background-color: #10b981;" onclick="kelimeyiGoster()">Sonucumu Göster</button>
+                
+                <div id="secret-display" style="display: none; margin-top: 15px;">
+                    <p class="warning">⚠️ Etrafındakiler görmeden bak ve hemen kapat!</p>
+                    <div id="result-label" style="font-size: 14px; color: #64748b;">Sana Çıkan:</div>
+                    <div class="word-display" id="target-word">????</div>
+                    <button class="action-btn" onclick="ekraniKapat()" style="background-color: #64748b; font-size:13px; padding:6px; margin-top:5px;">Gördüm, Ekranı Kapat</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+let aktifOda = ""; // "hediyelesme" veya "duakardesligi"
+let globalEslesmeler = {};
+
+function odaAc(odaTuru) {
+    aktifOda = odaTuru;
+    document.getElementById('lobby-view').style.display = "none";
+    document.getElementById('room-view').style.display = "block";
+    
+    // Oda türüne göre arayüzü özelleştirelim
+    const title = document.getElementById('room-title');
+    const desc = document.getElementById('room-desc');
+    const submitBtn = document.getElementById('submit-btn');
+
+    if(odaTuru === 'hediyelesme') {
+        title.innerHTML = "🎁 Hediye Çekilişi";
+        desc.innerHTML = "Herkes ismini ve diğer arkadaşının görmesini istediği gizli kelimeyi/hediyeyi yazsın.";
+        submitBtn.style.backgroundColor = "#e74c3c";
+    } else {
+        title.innerHTML = "🤲 Dua Kardeşliği";
+        desc.innerHTML = "Herkes sadece ismini yazsın. Sistem, duanızı kime edeceğinizi gizlice eşleştirecektir.";
+        submitBtn.style.backgroundColor = "#2980b9";
+    }
+
+    // Seçimleri sıfırla ve inputları üret
+    document.getElementById('setup-section').style.display = "block";
+    document.getElementById('reveal-section').style.display = "none";
+    document.getElementById('user-count').value = "4";
+    inputlariOlustur();
+}
+
+function anaEkranaDon() {
+    document.getElementById('room-view').style.display = "none";
+    document.getElementById('lobby-view').style.display = "block";
+    globalEslesmeler = {};
+}
+
+function inputlariOlustur() {
+    const countInput = document.getElementById('user-count');
+    let adet = parseInt(countInput.value);
+    
+    if (isNaN(adet) || adet < 3) adet = 3;
+    if (adet > 50) adet = 50; 
+    
+    const container = document.getElementById('inputs-container');
+    container.innerHTML = ""; 
+
+    for (let i = 1; i <= adet; i++) {
+        if(aktifOda === "hediyelesme") {
+            // Hediyeleşme odasında hem İsim hem Kelime var
+            container.innerHTML += `
+                <div class="input-group">
+                    <input type="text" class="user-name" placeholder="${i}. Katılımcı Adı">
+                    <input type="text" class="user-word" placeholder="Gizli Kelimesi">
+                </div>
+            `;
+        } else {
+            // Dua Kardeşliği odasında SADECE İsim var
+            container.innerHTML += `
+                <div class="input-group">
+                    <input type="text" class="user-name" placeholder="${i}. Katılımcı Adı">
+                </div>
+            `;
+        }
+    }
+}
+
+function cekilisYap() {
+    const nameInputs = document.querySelectorAll('.user-name');
+    const wordInputs = document.querySelectorAll('.user-word'); // Sadece hediyeleşmede dolu olacak
+    
+    let kisiler = [];
+    
+    for(let i = 0; i < nameInputs.length; i++) {
+        let adi = nameInputs[i].value.trim();
+        let kelimesi = (aktifOda === "hediyelesme") ? wordInputs[i].value.trim() : adi; // Dua modunda kelime yerine ismin kendisini havuz yapıyoruz
+        
+        if(adi === "" || kelimesi === "") {
+            alert("Lütfen tüm alanları doldurun!");
+            return;
+        }
+        kisiler.push({ isim: adi, kuraDegeri: kelimesi });
+    }
+
+    let basarili = false;
+    let denemeSayisi = 0;
+    let geciciEslesmeler = [];
+
+    // Derangement (Kendisiyle eşleşmeme) döngüsü
+    while (!basarili && denemeSayisi < 300) {
+        denemeSayisi++;
+        basarili = true;
+        geciciEslesmeler = [];
+        
+        let havuz = kisiler.map(k => k.kuraDegeri);
+        
+        // Fisher-Yates Karıştırma
+        for (let i = havuz.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [havuz[i], havuz[j]] = [havuz[j], havuz[i]];
+        }
+
+        // Çakışma Kontrolü
+        for (let i = 0; i < kisiler.length; i++) {
+            // Hediyeleşmede kendi kelimesini çekmemeli, Dua modunda kendi ismini çekmemeli
+            if (kisiler[i].kuraDegeri === havuz[i]) {
+                basarili = false;
+                break;
+            }
+            geciciEslesmeler.push({
+                isim: kisiler[i].isim,
+                sonuc: havuz[i]
+            });
+        }
+    }
+
+    if (basarili) {
+        globalEslesmeler = {};
+        const selectMenu = document.getElementById('user-select');
+        selectMenu.innerHTML = '<option value="">-- İsmini Seç --</option>';
+
+        geciciEslesmeler.forEach(e => {
+            globalEslesmeler[e.isim] = e.sonuc;
+            selectMenu.innerHTML += `<option value="${e.isim}">${e.isim}</option>`;
+        });
+
+        // Metin etiketini odaya göre güncelle
+        document.getElementById('result-label').innerText = (aktifOda === "hediyelesme") ? "Sana Çıkan Kelime:" : "Dua Edeceğin Kişi:";
+
+        document.getElementById('setup-section').style.display = "none";
+        document.getElementById('reveal-section').style.display = "block";
+    } else {
+        alert("Eşleşme hesaplanamadı. Lütfen tüm isimlerin benzersiz olduğundan emin olun.");
+    }
+}
+
+function kelimeyiGoster() {
+    const secilenKisi = document.getElementById('user-select').value;
+    const displayDiv = document.getElementById('secret-display');
+    const wordSlot = document.getElementById('target-word');
+
+    if(!secilenKisi) {
+        alert("Lütfen önce ismini seç!");
+        return;
+    }
+
+    wordSlot.innerText = globalEslesmeler[secilenKisi];
+    displayDiv.style.display = "block";
+}
+
+function ekraniTemizle() {
+    document.getElementById('secret-display').style.display = "none";
+}
+
+function ekraniKapat() {
+    document.getElementById('secret-display').style.display = "none";
+    document.getElementById('user-select').value = "";
+}
+</script>
+
+</body>
+</html>
