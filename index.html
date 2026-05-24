@@ -3,225 +3,368 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Çekiliş ve Dua Kardeşliği Platformu</title>
-    <link href="hediye.css" rel="stylesheet">
-
+    <title>Gelişmiş Çekiliş Platformu</title>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            max-width: 550px;
+            width: 100%;
+        }
+        h2, h3 { text-align: center; color: #2c3e50; margin-top: 0; }
+        .lobby-buttons { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+        .lobby-btn {
+            padding: 18px; font-size: 16px; font-weight: bold; color: white; border: none;
+            border-radius: 10px; cursor: pointer; transition: transform 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .btn-hediye { background-color: #e74c3c; }
+        .btn-dua { background-color: #2980b9; }
+        .btn-canli { background-color: #8e44ad; }
+        .lobby-btn:hover { transform: translateY(-2px); opacity: 0.9; }
+        
+        .setup-controls, .session-box {
+            background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center;
+        }
+        .input-group { display: flex; margin-bottom: 12px; gap: 10px; }
+        input, select { flex: 1; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; }
+        button.action-btn {
+            width: 100%; padding: 12px; color: white; border: none; border-radius: 8px;
+            font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 10px;
+        }
+        .reveal-box {
+            background-color: #f8fafc; border: 2px dashed #cbd5e1; padding: 20px; border-radius: 8px; text-align: center; margin-top: 20px;
+        }
+        .word-display { font-size: 26px; font-weight: bold; color: #10b981; margin: 15px 0; padding: 10px; background: #ecfdf5; border-radius: 6px; display: inline-block; }
+        .back-btn { background: none; border: none; color: #64748b; cursor: pointer; font-weight: 600; margin-bottom: 15px; }
+        .session-code-text { font-size: 24px; font-weight: bold; color: #8e44ad; letter-spacing: 2px; margin: 10px 0; }
+        .user-tag { display: inline-block; background: #e2e8f0; padding: 5px 10px; margin: 5px; border-radius: 20px; font-size: 13px; }
+    </style>
 </head>
 <body>
 
 <div class="container">
     
-    <!-- ================= ANA EKRAN (LOBİ) ================= -->
     <div id="lobby-view">
         <h2>✨ Çekiliş Merkezine Hoş Geldiniz</h2>
-        <p style="text-align: center; color: #64748b;">Lütfen giriş yapmak istediğiniz odayı seçin:</p>
+        <p style="text-align: center; color: #64748b;">Bir oda modu seçin:</p>
         <div class="lobby-buttons">
-            <button class="lobby-btn btn-hediye" onclick="odaAc('hediyelesme')">🎁 Hediye Çekilişi Odası</button>
-            <button class="lobby-btn btn-dua" onclick="odaAc('duakardesligi')">🤲 Dua Kardeşliği Odası</button>
+            <button class="lobby-btn btn-hediye" onclick="odaAc('hediyelesme')">🎁 Hediye Çekilişi Odası (Çevrimdışı)</button>
+            <button class="lobby-btn btn-dua" onclick="odaAc('duakardesligi')">🤲 Dua Kardeşliği Odası (Çevrimdışı)</button>
+            <button class="lobby-btn btn-canli" onclick="odaAc('canlioda')">🌐 Canlı Çevrimiçi Oda (Yeni!)</button>
         </div>
     </div>
 
-    <!-- ================= GİRİŞ VE SEÇİM EKRANI (ODALAR İÇİN ORTAK) ================= -->
     <div id="room-view" style="display: none;">
-        <button class="back-btn" onclick="anaEkranaDon()">⬅ Ana Menüye Dön</button>
+        <button class="back-btn" onclick="anaEkranaDon()">⬅ Menüye Dön</button>
         <h3 id="room-title">Oda Başlığı</h3>
-        <p id="room-desc" style="text-align: center; color: #64748b; font-size: 14px; margin-bottom: 20px;"></p>
+        <p id="room-desc" style="text-align: center; color: #64748b; font-size: 14px;"></p>
 
-        <!-- Adım 1: Kurulum -->
         <div id="setup-section">
-            <div class="setup-controls">
-                <label for="user-count" style="font-weight: 500;">Katılımcı Sayısı:</label>
-                <input type="number" id="user-count" min="3" max="50" value="4" onchange="inputlariOlustur()" oninput="inputlariOlustur()">
-            </div>
-
-            <div id="inputs-container">
-                <!-- Dinamik inputlar buraya gelecek -->
-            </div>
-            
+            <div class="setup-controls"><label>Katılımcı Sayısı:</label> <input type="number" id="user-count" min="3" max="50" value="4" oninput="inputlariOlustur()"></div>
+            <div id="inputs-container"></div>
             <button id="submit-btn" class="action-btn" onclick="cekilisYap()">Kura Çek ve Kilitle</button>
         </div>
 
-        <!-- Adım 2: Sonuç Gösterme -->
         <div id="reveal-section" style="display: none;">
-            <p style="text-align: center; color: #475569;">Kura tamamlandı! Sırayla herkes kendi ismini seçip gizlice sonucuna baksın.</p>
-            
             <div class="reveal-box">
-                <label for="user-select" style="display:block; margin-bottom:8px; font-weight:500;">Kimsin?</label>
-                <select id="user-select" onchange="ekraniTemizle()">
-                    <option value="">-- İsmini Seç --</option>
-                </select>
-                
+                <select id="user-select" onchange="document.getElementById('secret-display').style.display='none'"><option value="">-- İsmini Seç --</option></select>
                 <button class="action-btn" style="background-color: #10b981;" onclick="kelimeyiGoster()">Sonucumu Göster</button>
-                
                 <div id="secret-display" style="display: none; margin-top: 15px;">
-                    <p class="warning">⚠️ Etrafındakiler görmeden bak ve hemen kapat!</p>
                     <div id="result-label" style="font-size: 14px; color: #64748b;">Sana Çıkan:</div>
                     <div class="word-display" id="target-word">????</div>
-                    <button class="action-btn" onclick="ekraniKapat()" style="background-color: #64748b; font-size:13px; padding:6px; margin-top:5px;">Gördüm, Ekranı Kapat</button>
+                    <button class="action-btn" onclick="document.getElementById('secret-display').style.display='none'; document.getElementById('user-select').value=''" style="background-color: #64748b; font-size:13px; padding:6px;">Kapat</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div id="live-room-view" style="display: none;">
+        <button class="back-btn" onclick="anaEkranaDon()">⬅ Menüye Dön</button>
+        <h3>🌐 Canlı Çevrimiçi Çekiliş</h3>
+        
+        <div id="live-lobby">
+            <button class="action-btn" style="background-color: #8e44ad;" onclick="canliOdaOlustur()">Oda Kur (Admin Ol)</button>
+            <div style="text-align:center; margin: 15px 0; color:#64748b;">- VEYA -</div>
+            <div class="session-box">
+                <input type="text" id="join-code" placeholder="Oda Kodunu Girin (Örn: 4839)">
+                <input type="text" id="join-name" placeholder="Adınız" style="margin-top:10px;">
+                <button class="action-btn" style="background-color: #2ecc71;" onclick="odayaKatil()">Odaya Katıl</button>
+            </div>
+        </div>
+
+        <div id="live-waiting" style="display: none;">
+            <div class="session-box">
+                <div>Oda Kodu:</div>
+                <div class="session-code-text" id="display-session-code">0000</div>
+                <p style="font-size:12px; color:#64748b;">Bu kodu arkadaşlarınızla paylaşın. Herkes katıldığında Admin kurayı başlatacaktır.</p>
+            </div>
+            <h4>Katılanlar (<span id="player-count">0</span>):</h4>
+            <div id="live-players-list" style="margin-bottom:20px;"></div>
+            
+            <button id="admin-start-btn" class="action-btn" style="background-color: #e67e22; display:none;" onclick="canliKurayiBaslat()">Karıştır ve Kilitle (Admin)</button>
+            <p id="client-wait-text" style="text-align:center; color:#34495e; font-style:italic;">Adminin çekilişi başlatması bekleniyor...</p>
+        </div>
+
+        <div id="live-result" style="display: none;" class="reveal-box">
+            <h4 style="color:#e74c3c;">🎉 Çekiliş Sonuçlandı!</h4>
+            <p>Sistem algoritması herkesi birbirine tamamen gizli ve rastgele şekilde dağıttı.</p>
+            <div style="font-size: 14px; color: #64748b;">Dua Edeceğiniz / Hediye Alacağınız Kişi:</div>
+            <div class="word-display" id="live-target-word">????</div>
+            <p style="font-size:11px; color:#ef4444; margin-top:15px;">⚠️ Herkes sonucunu gördüğü an bu oda kendini tamamen yok edecektir.</p>
         </div>
     </div>
 
 </div>
 
 <script>
-let aktifOda = ""; // "hediyelesme" veya "duakardesligi"
+// ==================== CRITICAL: FIREBASE CONFIGURATION ====================
+// Kendinize ait ücretsiz bir Firebase projesi açıp aşağıdaki bilgileri doldurmalısınız!
+const firebaseConfig = {
+    apiKey: "AIzaSyD7l4O6bXtw7qyyT1Icz5yNHMZlGwXfk7M",
+    authDomain: "random-isim-dagitici.firebaseapp.com",
+    databaseURL: "https://random-isim-dagitici-default-rtdb.firebaseio.com",
+    projectId: "random-isim-dagitici",
+    storageBucket: "random-isim-dagitici.firebasestorage.app",
+    messagingSenderId: "835222513416",
+    appId: "1:835222513416:web:01e80d6687cd78dcc9aebd",
+    measurementId: "G-RK4K1LXDK6"
+};
+// Firebase'i başlatıyoruz (Eğer config doldurulmadıysa hata vermemesi için try-catch içine aldık)
+try { firebase.initializeApp(firebaseConfig); } catch(e) { console.log("Firebase henüz yapılandırılmadı."); }
+const db = typeof firebase !== 'undefined' ? firebase.database() : null;
+
+// GLOBAL DEĞİŞKENLER
+let aktifOda = "";
 let globalEslesmeler = {};
+let currentSessionCode = null;
+let myName = "";
+let isAdmin = false;
 
 function odaAc(odaTuru) {
     aktifOda = odaTuru;
     document.getElementById('lobby-view').style.display = "none";
-    document.getElementById('room-view').style.display = "block";
     
-    // Oda türüne göre arayüzü özelleştirelim
-    const title = document.getElementById('room-title');
-    const desc = document.getElementById('room-desc');
-    const submitBtn = document.getElementById('submit-btn');
-
-    if(odaTuru === 'hediyelesme') {
-        title.innerHTML = "🎁 Hediye Çekilişi";
-        desc.innerHTML = "Herkes ismini ve diğer arkadaşının görmesini istediği gizli kelimeyi/hediyeyi yazsın.";
-        submitBtn.style.backgroundColor = "#e74c3c";
+    if (odaTuru === 'canlioda') {
+        if(!db) { alert("Lütfen önce kodun en üstündeki Firebase ayarlarını yapın!"); anaEkranaDon(); return; }
+        document.getElementById('live-room-view').style.display = "block";
+        document.getElementById('live-lobby').style.display = "block";
+        document.getElementById('live-waiting').style.display = "none";
+        document.getElementById('live-result').style.display = "none";
     } else {
-        title.innerHTML = "🤲 Dua Kardeşliği";
-        desc.innerHTML = "Herkes sadece ismini yazsın. Sistem, duanızı kime edeceğinizi gizlice eşleştirecektir.";
-        submitBtn.style.backgroundColor = "#2980b9";
+        document.getElementById('room-view').style.display = "block";
+        const title = document.getElementById('room-title');
+        const desc = document.getElementById('room-desc');
+        const submitBtn = document.getElementById('submit-btn');
+        if(odaTuru === 'hediyelesme') {
+            title.innerHTML = "🎁 Hediye Çekilişi";
+            desc.innerHTML = "Herkes sırayla adını ve gizli kelimesini yazsın.";
+            submitBtn.style.backgroundColor = "#e74c3c";
+        } else {
+            title.innerHTML = "🤲 Dua Kardeşliği";
+            desc.innerHTML = "Herkes sadece ismini yazsın. Sistem kimseyi kendisiyle eşleştirmeden dağıtır.";
+            submitBtn.style.backgroundColor = "#2980b9";
+        }
+        inputlariOlustur();
     }
-
-    // Seçimleri sıfırla ve inputları üret
-    document.getElementById('setup-section').style.display = "block";
-    document.getElementById('reveal-section').style.display = "none";
-    document.getElementById('user-count').value = "4";
-    inputlariOlustur();
 }
 
 function anaEkranaDon() {
     document.getElementById('room-view').style.display = "none";
+    document.getElementById('live-room-view').style.display = "none";
     document.getElementById('lobby-view').style.display = "block";
-    globalEslesmeler = {};
+    if(currentSessionCode) { db.ref('sessions/' + currentSessionCode).off(); } // dinlemeyi kapat
+    currentSessionCode = null; isAdmin = false;
 }
 
+// 1 & 2. ODALARIN KLASİK İŞLEMLERİ (Önceki kodların aynısı)
 function inputlariOlustur() {
-    const countInput = document.getElementById('user-count');
-    let adet = parseInt(countInput.value);
-    
-    if (isNaN(adet) || adet < 3) adet = 3;
-    if (adet > 50) adet = 50; 
-    
+    let adet = parseInt(document.getElementById('user-count').value) || 3;
     const container = document.getElementById('inputs-container');
     container.innerHTML = ""; 
-
     for (let i = 1; i <= adet; i++) {
-        if(aktifOda === "hediyelesme") {
-            // Hediyeleşme odasında hem İsim hem Kelime var
-            container.innerHTML += `
-                <div class="input-group">
-                    <input type="text" class="user-name" placeholder="${i}. Katılımcı Adı">
-                    <input type="text" class="user-word" placeholder="Gizli Kelimesi">
-                </div>
-            `;
-        } else {
-            // Dua Kardeşliği odasında SADECE İsim var
-            container.innerHTML += `
-                <div class="input-group">
-                    <input type="text" class="user-name" placeholder="${i}. Katılımcı Adı">
-                </div>
-            `;
-        }
+        container.innerHTML += `<div class="input-group">
+            <input type="text" class="user-name" placeholder="${i}. Katılımcı Adı">
+            ${aktifOda==='hediyelesme' ? `<input type="text" class="user-word" placeholder="Gizli Kelimesi">`:''}
+        </div>`;
     }
 }
-
 function cekilisYap() {
     const nameInputs = document.querySelectorAll('.user-name');
-    const wordInputs = document.querySelectorAll('.user-word'); // Sadece hediyeleşmede dolu olacak
-    
+    const wordInputs = document.querySelectorAll('.user-word');
     let kisiler = [];
-    
     for(let i = 0; i < nameInputs.length; i++) {
-        let adi = nameInputs[i].value.trim();
-        let kelimesi = (aktifOda === "hediyelesme") ? wordInputs[i].value.trim() : adi; // Dua modunda kelime yerine ismin kendisini havuz yapıyoruz
-        
-        if(adi === "" || kelimesi === "") {
-            alert("Lütfen tüm alanları doldurun!");
-            return;
-        }
-        kisiler.push({ isim: adi, kuraDegeri: kelimesi });
+        let n = nameInputs[i].value.trim();
+        let w = (aktifOda === "hediyelesme") ? wordInputs[i].value.trim() : n;
+        if(!n || !w) { alert("Boş alan bırakmayın!"); return; }
+        kisiler.push({ isim: n, kuraDegeri: w });
     }
-
-    let basarili = false;
-    let denemeSayisi = 0;
-    let geciciEslesmeler = [];
-
-    // Derangement (Kendisiyle eşleşmeme) döngüsü
-    while (!basarili && denemeSayisi < 300) {
-        denemeSayisi++;
-        basarili = true;
-        geciciEslesmeler = [];
-        
+    // Derangement Algoritması
+    let basarili = false, deneme = 0, gecici = [];
+    while (!basarili && deneme < 300) {
+        deneme++; basarili = true; gecici = [];
         let havuz = kisiler.map(k => k.kuraDegeri);
-        
-        // Fisher-Yates Karıştırma
-        for (let i = havuz.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [havuz[i], havuz[j]] = [havuz[j], havuz[i]];
-        }
-
-        // Çakışma Kontrolü
+        for (let i = havuz.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [havuz[i], havuz[j]] = [havuz[j], havuz[i]]; }
         for (let i = 0; i < kisiler.length; i++) {
-            // Hediyeleşmede kendi kelimesini çekmemeli, Dua modunda kendi ismini çekmemeli
-            if (kisiler[i].kuraDegeri === havuz[i]) {
-                basarili = false;
-                break;
-            }
-            geciciEslesmeler.push({
-                isim: kisiler[i].isim,
-                sonuc: havuz[i]
-            });
+            if (kisiler[i].kuraDegeri === havuz[i]) { basarili = false; break; }
+            gecici.push({ isim: kisiler[i].isim, sonuc: havuz[i] });
         }
     }
-
     if (basarili) {
         globalEslesmeler = {};
-        const selectMenu = document.getElementById('user-select');
-        selectMenu.innerHTML = '<option value="">-- İsmini Seç --</option>';
-
-        geciciEslesmeler.forEach(e => {
-            globalEslesmeler[e.isim] = e.sonuc;
-            selectMenu.innerHTML += `<option value="${e.isim}">${e.isim}</option>`;
-        });
-
-        // Metin etiketini odaya göre güncelle
+        const sm = document.getElementById('user-select');
+        sm.innerHTML = '<option value="">-- İsmini Seç --</option>';
+        gecici.forEach(e => { globalEslesmeler[e.isim] = e.sonuc; sm.innerHTML += `<option value="${e.isim}">${e.isim}</option>`; });
         document.getElementById('result-label').innerText = (aktifOda === "hediyelesme") ? "Sana Çıkan Kelime:" : "Dua Edeceğin Kişi:";
-
         document.getElementById('setup-section').style.display = "none";
         document.getElementById('reveal-section').style.display = "block";
-    } else {
-        alert("Eşleşme hesaplanamadı. Lütfen tüm isimlerin benzersiz olduğundan emin olun.");
     }
 }
-
 function kelimeyiGoster() {
-    const secilenKisi = document.getElementById('user-select').value;
-    const displayDiv = document.getElementById('secret-display');
-    const wordSlot = document.getElementById('target-word');
+    const k = document.getElementById('user-select').value;
+    if(!k) return;
+    document.getElementById('target-word').innerText = globalEslesmeler[k];
+    document.getElementById('secret-display').style.display = "block";
+}
 
-    if(!secilenKisi) {
-        alert("Lütfen önce ismini seç!");
-        return;
+// ==================== 3. ODA: CANLI ONLINE ODA MANTIĞI ====================
+
+// 1. Admin Oda Oluşturuyor
+function canliOdaOlustur() {
+    currentSessionCode = Math.floor(1000 + Math.random() * 9000).toString(); // 4 haneli kod
+    isAdmin = true;
+    myName = "Admin";
+    
+    db.ref('sessions/' + currentSessionCode).set({
+        status: "waiting",
+        createdAt: firebase.database.ServerValue.TIMESTAMP
+    }).then(() => {
+        canliOdaDinleyiciBaslat();
+    });
+}
+
+// 2. Kullanıcı Kodu Yazıp Odaya Katılıyor
+function odayaKatil() {
+    const code = document.getElementById('join-code').value.trim();
+    const name = document.getElementById('join-name').value.trim();
+    if(!code || !name) { alert("Lütfen kod ve isim girin!"); return; }
+    
+    db.ref('sessions/' + code).once('value', snapshot => {
+        if(!snapshot.exists()) { alert("Oda bulunamadı veya süresi dolmuş!"); return; }
+        if(snapshot.val().status !== "waiting") { alert("Bu oda çekilişe çoktan başlamış!"); return; }
+        
+        currentSessionCode = code;
+        myName = name;
+        isAdmin = false;
+        
+        // İsmini odaya ekle
+        db.ref('sessions/' + code + '/players/' + name).set(true).then(() => {
+            canliOdaDinleyiciBaslat();
+        });
+    });
+}
+
+// 3. Odadaki Değişiklikleri Anlık İzleyen Mekanizma
+function canliOdaDinleyiciBaslat() {
+    document.getElementById('live-lobby').style.display = "none";
+    document.getElementById('live-waiting').style.display = "block";
+    document.getElementById('display-session-code').innerText = currentSessionCode;
+    
+    if(isAdmin) {
+        document.getElementById('admin-start-btn').style.display = "block";
+        document.getElementById('client-wait-text').style.display = "none";
+    } else {
+        document.getElementById('admin-start-btn').style.display = "none";
+        document.getElementById('client-wait-text').style.display = "block";
     }
 
-    wordSlot.innerText = globalEslesmeler[secilenKisi];
-    displayDiv.style.display = "block";
+    // Oyuncuları anlık listeleme
+    db.ref('sessions/' + currentSessionCode + '/players').on('value', snapshot => {
+        const listDiv = document.getElementById('live-players-list');
+        listDiv.innerHTML = "";
+        let count = 0;
+        if(snapshot.exists()) {
+            Object.keys(snapshot.val()).forEach(pName => {
+                count++;
+                listDiv.innerHTML += `<span class="user-tag">👤 ${pName}</span>`;
+            });
+        }
+        document.getElementById('player-count').innerText = count;
+    });
+
+    // Durumu anlık izleme (Admin karıştırınca herkesi sonuç ekranına fırlatacak)
+    db.ref('sessions/' + currentSessionCode + '/status').on('value', snapshot => {
+        if(snapshot.val() === "completed") {
+            // Sonuçları al
+            db.ref('sessions/' + currentSessionCode + '/matches/' + myName).once('value', matchSnap => {
+                if(matchSnap.exists()) {
+                    document.getElementById('live-waiting').style.display = "none";
+                    document.getElementById('live-result').style.display = "block";
+                    document.getElementById('live-target-word').innerText = matchSnap.val();
+                    
+                    // SESSION DESTROY (YOK ETME) MEKANİZMASI: 
+                    // Herkes sonucunu aldıktan 15 saniye sonra veri tabanındaki oda tamamen silinir.
+                    setTimeout(() => {
+                        if(currentSessionCode) {
+                            db.ref('sessions/' + currentSessionCode).remove();
+                        }
+                    }, 15000);
+                } else if (!isAdmin) {
+                    alert("Çekiliş bitti ancak isminiz listede bulunamadı.");
+                }
+            });
+        }
+    });
 }
 
-function ekraniTemizle() {
-    document.getElementById('secret-display').style.display = "none";
-}
-
-function ekraniKapat() {
-    document.getElementById('secret-display').style.display = "none";
-    document.getElementById('user-select').value = "";
+// 4. Admin Kurayı Başlatıyor (Arka planda isimleri dağıtıp DB'ye yazıyor)
+function canliKurayiBaslat() {
+    db.ref('sessions/' + currentSessionCode + '/players').once('value', snapshot => {
+        if(!snapshot.exists() || Object.keys(snapshot.val()).length < 3) {
+            alert("Çekiliş için en az 3 oyuncunun katılması gerekir!");
+            return;
+        }
+        
+        let pList = Object.keys(snapshot.val());
+        let basarili = false, deneme = 0, matches = {};
+        
+        // Derangement (Kendini Çekmeme) Algoritması
+        while (!basarili && deneme < 300) {
+            deneme++; basarili = true; matches = {};
+            let havuz = [...pList];
+            
+            for (let i = havuz.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [havuz[i], havuz[j]] = [havuz[j], havuz[i]];
+            }
+            for (let i = 0; i < pList.length; i++) {
+                if (pList[i] === havuz[i]) { basarili = false; break; }
+                matches[pList[i]] = havuz[i];
+            }
+        }
+        
+        if(basarili) {
+            // Sonuçları gönder ve durumu güncelle
+            db.ref('sessions/' + currentSessionCode).update({
+                matches: matches,
+                status: "completed"
+            });
+        }
+    });
 }
 </script>
 
